@@ -6,6 +6,10 @@ namespace UserOrderAPI.Services
     {
         Task<object> CreateUser(CreateUserDto dto);
 
-        Task<IEnumerable<UserWithOrdersResponseDto>> GetUsers();
+        Task<IEnumerable<UserWithOrdersResponseDto>> GetUsers(
+            int page,
+            int pageSize,
+            string? search,
+            string? sortBy);
     }
 }
