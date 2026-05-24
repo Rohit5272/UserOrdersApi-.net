@@ -14,9 +14,13 @@ namespace UserOrderAPI.Controllers
     {
         public readonly IUserService _userService;
 
-        public UserController(IUserService userService)
+        private readonly ILogger<UserController> _logger;
+
+        public UserController(IUserService userService,
+            ILogger<UserController> logger)
         {
             _userService = userService;
+            _logger = logger;
         }
 
         [HttpPost]
@@ -29,11 +33,28 @@ namespace UserOrderAPI.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpGet]
-        public async Task<IActionResult> GetAllUsers()
+        public async Task<IActionResult> GetAllUsers(
+            int page = 1,
+            int pageSize = 5,
+            string? search = null,
+            string? sortBy = null)
         {
-            var users = await _userService.GetUsers();
+            _logger.LogInformation("GetAllUsers API called");
+
+            var users = await _userService.GetUsers(
+                page,pageSize,search,sortBy);
+
+            _logger.LogInformation("Users fetched successfully");
+
             return Ok(users);
-        }       
+        }
+
+        // checking global exception handling
+        [HttpGet("test-error")]
+        public IActionResult TestError()
+        {
+            throw new Exception("Something broke");
+        }
 
 
         //[HttpPut("{id}")]

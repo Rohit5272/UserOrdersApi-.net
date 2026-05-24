@@ -62,9 +62,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
+
+            ClockSkew = TimeSpan.Zero,
+
             ValidateIssuerSigningKey = true,
 
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
+
             ValidAudience = builder.Configuration["Jwt:Audience"],
 
             IssuerSigningKey = new SymmetricSecurityKey(
@@ -73,9 +77,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+builder.Services.AddAutoMapper(typeof(Program));
+
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+app.UseHttpsRedirection();
+
+app.UseMiddleware<UserOrderAPI.Middleware.ExceptionMiddleware>();
 
 app.UseAuthentication();
 
@@ -87,7 +97,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
 
 app.UseAuthorization();
 

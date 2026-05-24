@@ -63,7 +63,7 @@ namespace UserOrderAPI.Controllers
 
             var claims = new[]
             {
-                new Claim(ClaimTypes.Name, user.Name),
+                new Claim(ClaimTypes.Name, user.Name), // user is a string (the user's name or email)
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim(ClaimTypes.Role, user.Role)
             };
@@ -82,7 +82,69 @@ namespace UserOrderAPI.Controllers
 
             var jwt = new JwtSecurityTokenHandler().WriteToken(token);
 
-            return Ok(new { token = jwt });
+            var refreshToken = new RefreshToken
+            {
+                Token = GenerateRefreshToken(),
+                UserId = user.Id,
+                ExpiryDate = DateTime.Now.AddDays(7)
+            };
+
+            _context.RefreshTokens.Add(refreshToken);
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { token = jwt,refreshToken = refreshToken.Token });
+        }
+
+        private string GenerateRefreshToken()
+        { 
+            return Guid.NewGuid().ToString();
+        }
+
+        [HttpPost("refresh")]
+        public async Task<IActionResult> RefreshToken(RefreshTokenDto dto)
+        {
+            var storedToken = await _context.RefreshTokens
+                .Include(r => r.User)
+                .FirstOrDefaultAsync(r => r.Token == dto.RefreshToken);
+
+            if (storedToken == null) return Unauthorized("Invalid refresh token.");
+
+            if(storedToken.IsRevoked) return Unauthorized("Token revoked.");
+
+            if (storedToken.ExpiryDate < DateTime.Now)
+            { 
+                return Unauthorized("Token expired.");
+            }
+
+            var user = storedToken.User;
+
+            var claims = new[]
+            {
+                new Claim(ClaimTypes.Name, user.Name),
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Role, user.Role)
+            };
+
+            var key = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
+
+            var creds = new SigningCredentials(
+                key,
+                SecurityAlgorithms.HmacSha256);
+
+            var token = new JwtSecurityToken(
+                issuer: _configuration["Jwt:Issuer"],
+                audience: _configuration["Jwt:Audience"],
+                claims: claims,
+                expires: DateTime.Now.AddHours(15),
+                signingCredentials: creds
+            );
+
+            var newAccessToken = new JwtSecurityTokenHandler().WriteToken(token);
+
+            return Ok(new { token = newAccessToken });
+
         }
 
     }
