@@ -7,6 +7,7 @@ using System.Text;
 using UserOrderAPI.Data;
 using UserOrderAPI.DTOs;
 using UserOrderAPI.Models;
+using FluentValidation;
 
 namespace UserOrderAPI.Controllers
 {
@@ -26,8 +27,13 @@ namespace UserOrderAPI.Controllers
 
         // Register endpoint
         [HttpPost("register")]
-        public async Task<IActionResult> Register(RegisterDto dto)
+        public async Task<IActionResult> Register(RegisterDto dto,
+            IValidator<RegisterDto> validator)
         {
+            var validationResult = await validator.ValidateAsync(dto);
+
+            if (!validationResult.IsValid) return BadRequest(validationResult.Errors);
+
             var emailExists = await _context.Users.AnyAsync(u => u.Email == dto.Email);
 
             if (emailExists)
